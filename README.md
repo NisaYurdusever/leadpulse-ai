@@ -1,3 +1,20 @@
+## Tool Contract: `scoreLead`
+
+- **Name:** `scoreLead`
+- **Description:** Evaluates client intent, budget threshold, and technical compatibility to produce a structured qualification scorecard.
+- **Input Schema (`zod`):**
+  - `companyName` (string): Prospect organization or project name.
+  - `budgetUsd` (number): Estimated development budget in USD (must be > 0).
+  - `urgency` (enum: `'immediate' | 'next_quarter' | 'exploratory'`): Timeline requirements.
+  - `techStackFit` (boolean): Stack compatibility against Next.js / TypeScript.
+- **Return Shape:**
+  - `success` (boolean): Operation status.
+  - `score` (number, 0-100): Calculated qualification index.
+  - `tier` (string): Routing tier (e.g., `'Tier 1 (High Intent)'`).
+  - `estimatedBudget` (string): Formatted currency value.
+  - `urgency` (string): Echoed timeline tier.
+  - `recommendation` (string): Strategic follow-up action.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

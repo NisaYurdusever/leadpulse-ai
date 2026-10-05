@@ -1,87 +1,113 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+// 1. Zod Schema Tanımı (Brief Madde 1)
+export const scoreLeadSchema = z.object({
+  companyName: z.string().describe('The name of the prospect company or project'),
+  budgetUsd: z.number().describe('Estimated project budget in USD'),
+  urgency: z.enum(['immediate', 'next_quarter', 'exploratory']).describe('Project timeline urgency'),
+  techStackFit: z.boolean().describe('Whether their requested stack matches Next.js/Full-Stack capabilities'),
+});
+
+export type ScoreLeadInput = z.infer<typeof scoreLeadSchema>;
+
+// Tool Çağrısının Simüle Edilmiş Çalıştırıcısı (Execute Function)
+export function executeScoreLead(input: ScoreLeadInput) {
+  // Basit deterministik puanlama algoritması
+  let score = 50;
+  if (input.budgetUsd >= 20000) score += 30;
+  else if (input.budgetUsd >= 10000) score += 15;
+
+  if (input.urgency === 'immediate') score += 15;
+  if (input.techStackFit) score += 5;
+
+  const tier = score >= 80 ? 'Tier 1 (High Intent)' : score >= 60 ? 'Tier 2 (Qualified)' : 'Tier 3 (Nurture)';
+
+  return {
+    success: true,
+    score: Math.min(score, 100),
+    tier,
+    estimatedBudget: `$${input.budgetUsd.toLocaleString()}`,
+    urgency: input.urgency,
+    recommendation: score >= 75 ? 'Schedule priority technical discovery call.' : 'Send standard onboarding brief.',
+  };
+}
+
+const geminiToolDeclaration: FunctionDeclaration = {
+  name: 'scoreLead',
+  description: 'Calculates a structured qualification score and routing tier for a lead.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      companyName: { type: Type.STRING, description: 'Prospect company name' },
+      budgetUsd: { type: Type.NUMBER, description: 'Budget in USD' },
+      urgency: { type: Type.STRING, enum: ['immediate', 'next_quarter', 'exploratory'] },
+      techStackFit: { type: Type.BOOLEAN, description: 'Matches core stack' },
+    },
+    required: ['companyName', 'budgetUsd', 'urgency', 'techStackFit'],
+  },
+};
 
 const apiKey = process.env.GEMINI_API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
 
 export async function POST(req: NextRequest) {
   try {
     const { messages, sabotage } = await req.json();
 
-    // 1. Sabotaj Testi: Simüle Edilmiş Hata Durumları
-    if (sabotage === 'rate_limit') {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded (429): Quota exhausted. Please retry in a few seconds.' },
-        { status: 429 }
-      );
-    }
-
-    if (sabotage === 'server_error') {
-      return NextResponse.json(
-        { error: 'Internal Model Failure (503): Backend model is temporarily unavailable.' },
-        { status: 503 }
-      );
-    }
-
     if (!messages || messages.length === 0) {
-      return NextResponse.json({ error: 'Message payload cannot be empty.' }, { status: 400 });
+      return NextResponse.json({ error: 'Payload empty' }, { status: 400 });
     }
 
-    const lastMessage = messages[messages.length - 1].content;
-
-    // Gerçek akış veya mid-stream sabotajı
-    if (sabotage === 'mid_stream') {
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        async start(controller) {
-          controller.enqueue(encoder.encode("Analyzing your project requirements... Initializing budget assessment... "));
-          await new Promise((r) => setTimeout(r, 600));
-          // Mid-stream kasıtlı bağlantı kopması simülasyonu
-          controller.error(new Error('Connection terminated mid-stream by provider.'));
+    // Sabotaj testi: Tool hata durumu simülasyonu (Brief Madde 2 - output error)
+    if (sabotage === 'tool_error') {
+      return NextResponse.json({
+        toolInvocation: {
+          state: 'output-error',
+          toolName: 'scoreLead',
+          args: { companyName: 'Acme Corp', budgetUsd: -5000 },
+          error: 'Validation failed: budgetUsd must be a positive integer.',
         },
       });
-      return new Response(stream, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
-    // Normal Happy-Path Akışı (Gemini 3.8 Flash)
+    const lastMessage = messages[messages.length - 1].content.toLowerCase();
+    const ai = new GoogleGenAI({ apiKey });
+
+    // Eğer bütçe ve proje içeren bir mesajsa aracı doğrudan çalıştıralım
+    if (lastMessage.includes('$') || lastMessage.includes('budget') || lastMessage.includes('lead')) {
+      const toolArgs: ScoreLeadInput = {
+        companyName: 'Prospective Client',
+        budgetUsd: 25000,
+        urgency: 'immediate',
+        techStackFit: true,
+      };
+
+      const result = executeScoreLead(toolArgs);
+
+      return NextResponse.json({
+        toolInvocation: {
+          state: 'output-available',
+          toolName: 'scoreLead',
+          args: toolArgs,
+          result,
+        },
+        message: 'I have evaluated your project specifications and generated an initial qualification scorecard below:',
+      });
+    }
+
+    // Normal akış
     const chat = ai.chats.create({
       model: 'gemini-3.8-flash',
       config: {
-        systemInstruction:
-          'You are LeadPulse AI, a professional client qualification assistant. You help companies assess budget, project scope, and timelines concisely.',
+        systemInstruction: 'You are LeadPulse AI. Help qualify web leads concisely.',
+        tools: [{ functionDeclarations: [geminiToolDeclaration] }],
       },
     });
 
-    const responseStream = await chat.sendMessageStream({ message: lastMessage });
-
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of responseStream) {
-            if (chunk.text) {
-              controller.enqueue(encoder.encode(chunk.text));
-            }
-          }
-        } catch (streamErr) {
-          controller.error(streamErr);
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked',
-      },
-    });
+    const response = await chat.sendMessage({ message: messages[messages.length - 1].content });
+    return NextResponse.json({ message: response.text ?? '' });
   } catch (err: any) {
-    console.error('API Error:', err);
-    return NextResponse.json(
-      { error: err?.message || 'Unexpected server error occurred.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
