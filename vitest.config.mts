@@ -12,5 +12,6 @@ export default defineConfig({
       '@': path.resolve(process.cwd(), 'src'),
     },
     exclude: ['**/node_modules/**', '**/e2e/**'],
+    pool: 'vmThreads',
   },
 });
