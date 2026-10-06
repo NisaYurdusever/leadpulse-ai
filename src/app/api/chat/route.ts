@@ -2,7 +2,6 @@ import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// 1. Zod Schema Tanımı (Brief Madde 1)
 export const scoreLeadSchema = z.object({
   companyName: z.string().describe('The name of the prospect company or project'),
   budgetUsd: z.number().describe('Estimated project budget in USD'),
@@ -12,25 +11,31 @@ export const scoreLeadSchema = z.object({
 
 export type ScoreLeadInput = z.infer<typeof scoreLeadSchema>;
 
-// Tool Çağrısının Simüle Edilmiş Çalıştırıcısı (Execute Function)
 export function executeScoreLead(input: ScoreLeadInput) {
-  // Basit deterministik puanlama algoritması
-  let score = 50;
-  if (input.budgetUsd >= 20000) score += 30;
-  else if (input.budgetUsd >= 10000) score += 15;
+  let score = 40;
+  if (input.budgetUsd >= 20000) score += 40;
+  else if (input.budgetUsd >= 5000) score += 25;
+  else if (input.budgetUsd >= 1000) score += 10;
+  else score = Math.max(15, Math.min(35, Math.floor(input.budgetUsd / 20)));
 
   if (input.urgency === 'immediate') score += 15;
   if (input.techStackFit) score += 5;
 
-  const tier = score >= 80 ? 'Tier 1 (High Intent)' : score >= 60 ? 'Tier 2 (Qualified)' : 'Tier 3 (Nurture)';
+  const finalScore = Math.min(score, 100);
+  const tier = finalScore >= 80 ? 'Tier 1 (High Intent)' : finalScore >= 50 ? 'Tier 2 (Qualified)' : 'Tier 3 (Low Budget / Nurture)';
 
   return {
     success: true,
-    score: Math.min(score, 100),
+    score: finalScore,
     tier,
     estimatedBudget: `$${input.budgetUsd.toLocaleString()}`,
     urgency: input.urgency,
-    recommendation: score >= 75 ? 'Schedule priority technical discovery call.' : 'Send standard onboarding brief.',
+    recommendation:
+      finalScore >= 75
+        ? 'Schedule priority technical discovery call.'
+        : finalScore >= 50
+        ? 'Send automated proposal and portfolio overview.'
+        : 'Budget below custom project minimum. Route to self-service templates.',
   };
 }
 
@@ -59,7 +64,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Payload empty' }, { status: 400 });
     }
 
-    // Sabotaj testi: Tool hata durumu simülasyonu (Brief Madde 2 - output error)
     if (sabotage === 'tool_error') {
       return NextResponse.json({
         toolInvocation: {
@@ -71,16 +75,27 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const lastMessage = messages[messages.length - 1].content.toLowerCase();
-    const ai = new GoogleGenAI({ apiKey });
+    const rawMessage = messages[messages.length - 1].content;
+    const lastMessage = rawMessage.toLowerCase();
 
-    // Eğer bütçe ve proje içeren bir mesajsa aracı doğrudan çalıştıralım
-    if (lastMessage.includes('$') || lastMessage.includes('budget') || lastMessage.includes('lead')) {
+    // Mesaj içerisinden bütçe miktarını yakala ($500, 100€, 25,000, 30000 vb.)
+    const numberMatch = rawMessage.replace(/,/g, '').match(/(\d+[\d\.]*)/);
+    const parsedBudget = numberMatch ? parseFloat(numberMatch[1]) : 25000;
+
+    const hasBudgetKeywords =
+      lastMessage.includes('$') ||
+      lastMessage.includes('€') ||
+      lastMessage.includes('euro') ||
+      lastMessage.includes('dollar') ||
+      lastMessage.includes('budget') ||
+      lastMessage.includes('lead');
+
+    if (hasBudgetKeywords) {
       const toolArgs: ScoreLeadInput = {
         companyName: 'Prospective Client',
-        budgetUsd: 25000,
-        urgency: 'immediate',
-        techStackFit: true,
+        budgetUsd: parsedBudget,
+        urgency: parsedBudget < 1000 ? 'exploratory' : 'immediate',
+        techStackFit: lastMessage.includes('react') || lastMessage.includes('next'),
       };
 
       const result = executeScoreLead(toolArgs);
@@ -92,20 +107,21 @@ export async function POST(req: NextRequest) {
           args: toolArgs,
           result,
         },
-        message: 'I have evaluated your project specifications and generated an initial qualification scorecard below:',
+        message: `I have evaluated your specifications ($${parsedBudget.toLocaleString()} budget) and generated your dynamic lead qualification scorecard:`,
       });
     }
 
-    // Normal akış
+    // Normal serbest sohbet akışı (Gemini API)
+    const ai = new GoogleGenAI({ apiKey });
     const chat = ai.chats.create({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-2.5-flash',
       config: {
         systemInstruction: 'You are LeadPulse AI. Help qualify web leads concisely.',
         tools: [{ functionDeclarations: [geminiToolDeclaration] }],
       },
     });
 
-    const response = await chat.sendMessage({ message: messages[messages.length - 1].content });
+    const response = await chat.sendMessage({ message: rawMessage });
     return NextResponse.json({ message: response.text ?? '' });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
