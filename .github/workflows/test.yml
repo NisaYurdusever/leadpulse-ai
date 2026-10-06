@@ -1,3 +1,4 @@
+```yaml
 name: Test Suite CI
 
 on:
@@ -17,14 +18,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.17.0
           cache: 'npm'
 
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
       - name: Run Vitest Suite
-        run: npx vitest run src/test/components.test.tsx --reporter=verbose
+        run: npx vitest run --poolOptions.forks.singleFork=true
 
       - name: Build Next.js Application
         run: npm run build
