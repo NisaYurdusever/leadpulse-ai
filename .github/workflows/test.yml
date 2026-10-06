@@ -24,7 +24,7 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Run Vitest Suite
-        run: npx vitest run --poolOptions.forks.singleFork=true
+        run: npm test
 
       - name: Build Next.js Application
         run: npm run build
