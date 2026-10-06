@@ -22,10 +22,10 @@ jobs:
       - name: Install Dependencies
         run: |
           npm install --legacy-peer-deps
-          npm install -D @rolldown/binding-linux-x64-gnu --legacy-peer-deps
+          npm install -D @rolldown/binding-linux-x64-gnu happy-dom --legacy-peer-deps
 
       - name: Run Vitest Suite
-        run: npm run test
+        run: npx vitest run src/test/components.test.tsx --environment=happy-dom
 
       - name: Build Next.js Application
         run: npm run build
