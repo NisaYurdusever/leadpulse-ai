@@ -23,8 +23,8 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Run Vitest Suite (6 Component Tests)
-        run: npm run test
+      - name: Run Vitest Suite
+        run: npx vitest run src/test/components.test.tsx --reporter=verbose
 
       - name: Build Next.js Application
         run: npm run build
