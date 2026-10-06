@@ -20,12 +20,12 @@ jobs:
           node-version: '20.15.0'
 
       - name: Install Dependencies
-        run: npm install --legacy-peer-deps
+        run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
 
       - name: Run Vitest Suite
         run: npm run test
-        env:
-          NODE_OPTIONS: "--no-warnings"
 
       - name: Build Next.js Application
         run: npm run build
