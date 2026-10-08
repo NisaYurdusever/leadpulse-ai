@@ -4,7 +4,21 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'LeadPulse AI | Autonomous Lead Qualification Platform',
-  description: 'AI-driven client engagement, qualification, and appointment scheduling.',
+  description: 'AI-driven client engagement, qualification, and appointment scheduling with Generative UI cards.',
+  keywords: ['AI Lead Qualification', 'Generative UI', 'Next.js', 'Gemini API', 'LeadPulse'],
+  authors: [{ name: 'Nisa Nur Yurdusever' }],
+  openGraph: {
+    title: 'LeadPulse AI | Autonomous Lead Qualification',
+    description: 'Real-time AI lead scoring and structured qualification cards built with Next.js and Gemini.',
+    url: 'https://leadpulse-ai-chi.vercel.app',
+    siteName: 'LeadPulse AI',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'LeadPulse AI',
+    description: 'Autonomous Lead Qualification with Generative UI',
+  },
 };
 
 export default function RootLayout({
@@ -29,6 +43,9 @@ export default function RootLayout({
               </Link>
               <Link href="/chat" className="text-slate-300 hover:text-white transition">
                 Assistant
+              </Link>
+              <Link href="/button-demo" className="text-slate-300 hover:text-white transition">
+                Button Demo
               </Link>
               <Link href="/settings" className="text-slate-300 hover:text-white transition">
                 Settings
