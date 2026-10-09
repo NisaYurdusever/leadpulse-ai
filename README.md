@@ -1,53 +1,67 @@
-## Tool Contract: `scoreLead`
+# LeadPulse AI — Autonomous Lead Qualification & Interactive 3D Workspaces
 
-- **Name:** `scoreLead`
-- **Description:** Evaluates client intent, budget threshold, and technical compatibility to produce a structured qualification scorecard.
-- **Input Schema (`zod`):**
-  - `companyName` (string): Prospect organization or project name.
-  - `budgetUsd` (number): Estimated development budget in USD (must be > 0).
-  - `urgency` (enum: `'immediate' | 'next_quarter' | 'exploratory'`): Timeline requirements.
-  - `techStackFit` (boolean): Stack compatibility against Next.js / TypeScript.
-- **Return Shape:**
-  - `success` (boolean): Operation status.
-  - `score` (number, 0-100): Calculated qualification index.
-  - `tier` (string): Routing tier (e.g., `'Tier 1 (High Intent)'`).
-  - `estimatedBudget` (string): Formatted currency value.
-  - `urgency` (string): Echoed timeline tier.
-  - `recommendation` (string): Strategic follow-up action.
+LeadPulse AI is an autonomous inbound lead qualification platform built with Next.js 15, TypeScript, and the Gemini API. It qualifies incoming leads in real-time, executes structured scoring functions via Tool Calling, dynamically renders native **Generative UI** scorecards, and showcases interactive 3D WebGL product environments.
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+---
 
-## Getting Started
+## 🚀 Live Demos & Interactive Showcases
+- **Live Application:** [https://leadpulse-ai-chi.vercel.app](https://leadpulse-ai-chi.vercel.app)
+- **Generative UI Chat:** [https://leadpulse-ai-chi.vercel.app/chat](https://leadpulse-ai-chi.vercel.app/chat)
+- **Button Motion Playground:** [https://leadpulse-ai-chi.vercel.app/button-demo](https://leadpulse-ai-chi.vercel.app/button-demo)
+- **Interactive 3D Desk Showroom:** [https://desk-showroom.vercel.app](https://desk-showroom.vercel.app)
 
-First, run the development server:
+---
+
+## 🎨 Interactive 3D Experience (Desk Showroom)
+Built with **React Three Fiber**, **Three.js**, and **Drei**:
+- **Cozy Room & Product Inspector:** An interactive 3D room featuring desktop hardware (laptop, phone, headphones) that users can click to inspect, rotate, and zoom.
+- **Configurator Panel:** Real-time color and material swapping for items.
+- **Interactive Features:** Procedural animations, cursor-following reactive elements, and lazy-loaded WebGL canvas for performance optimization.
+
+---
+
+## 📑 What It Does & For Whom
+Designed for sales engineering teams and B2B SaaS platforms, LeadPulse AI replaces static contact forms with an adaptive AI assistant.
+- Evaluates lead budget, timeline, and project requirements.
+- Automatically invokes `scoreLead()` tool calls to determine lead tiers.
+- Handles rate limits (429), API failures, and empty inputs gracefully without white-screen crashes.
+
+---
+
+## 🛠️ Reproducible Setup Guide
+
+Follow these steps to run the application locally:
 
 ```bash
+# 1. Clone the repository
+git clone [https://github.com/NisaYurdusever/leadpulse-ai.git](https://github.com/NisaYurdusever/leadpulse-ai.git)
+cd leadpulse-ai
+
+# 2. Install dependencies (using legacy peer deps for compatibility)
+npm install --legacy-peer-deps
+
+# 3. Configure environment variables
+# Create a .env.local file in the root directory and add:
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# 4. Start the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+📊 V2 Evaluation & Test Results
+Lighthouse Mobile Performance: 95 / 100
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Lighthouse Mobile Accessibility: 100 / 100
 
-## Learn More
+WAVE Accessibility Errors: 0 Errors
 
-To learn more about Next.js, take a look at the following resources:
+Unit & Integration Tests: 6 passing test suites (Vitest & Testing Library) for error boundary triggers and component rendering.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+🛑 Known Limitations
+Currency Support: Evaluates budget in base USD (parsedBudget). Real-time foreign exchange currency conversion is currently out of scope.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Context Persistence: Currently processes the latest user query context. Multi-turn chat session memory over 10+ turns is planned for future iterations.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+🤖 Transparency & AI Collaboration Statement
+Built with AI Assistance: I developed this project using Claude / ChatGPT as an AI pair programmer for rapid UI scaffolding and shader generation. I independently audited, tested, and validated all Zod schemas, error boundaries, A11y ARIA-live implementations, and deployment pipelines.
