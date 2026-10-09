@@ -2,6 +2,8 @@ import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+export const maxDuration = 30;
+
 export const scoreLeadSchema = z.object({
   companyName: z.string().describe('The name of the prospect company or project'),
   budgetUsd: z.number().describe('Estimated project budget in USD'),
@@ -60,8 +62,20 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, sabotage } = await req.json();
 
-    if (!messages || messages.length === 0) {
+    if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'Payload empty' }, { status: 400 });
+    }
+
+    const rawMessage = messages[messages.length - 1]?.content;
+    if (typeof rawMessage !== 'string') {
+      return NextResponse.json({ error: 'Invalid message' }, { status: 400 });
+    }
+
+    if (rawMessage.length > 1000) {
+      return NextResponse.json(
+        { error: 'Message exceeds maximum allowed length (1000 chars).' },
+        { status: 400 }
+      );
     }
 
     if (sabotage === 'tool_error') {
@@ -75,7 +89,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const rawMessage = messages[messages.length - 1].content;
     const lastMessage = rawMessage.toLowerCase();
 
     // Mesaj içerisinden bütçe miktarını yakala ($500, 100€, 25,000, 30000 vb.)
